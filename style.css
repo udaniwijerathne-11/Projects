@@ -1,0 +1,46 @@
+* {
+  font-family: "Poppins", sans-serif;
+}
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+.card {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+/* .card:hover {
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+            transform: translateY(-5px);
+        }*/
+select,
+button {
+  transition: all 0.2s ease;
+}
+select:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(79, 70, 229, 0.25);
+}
+.result-card {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+}
+.option-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 6px;
+}
+h1 {
+    padding-bottom: 10px;
+}

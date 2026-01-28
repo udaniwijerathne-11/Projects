@@ -1,0 +1,261 @@
+<script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+        return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                    row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                    headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+    }
+</script>
+<!DOCTYPE html>
+<!-- <html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tourist Attraction Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 max-w-2xl">
+        <h1 class="text-3xl font-bold text-center mb-6">Tourist Attraction Navigator</h1>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <form id="navigator-form" class="space-y-4">
+                <div>
+                    <label for="start-city" class="block text-sm font-medium text-gray-700">Start City</label>
+                    <select id="start-city" name="start-city" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="colombo">Colombo</option>
+                        <option value="gampaha">Gampaha</option>
+                        <option value="kaluthara">Kaluthara</option>
+                        <option value="kegalle">Kegalle</option>
+                        <option value="kandy">Kandy</option>
+                        <option value="matale">Matale</option>
+                        <option value="nuwaraeliya">Nuwaraeliya</option>
+                        <option value="galle">Galle</option>
+                        <option value="matara">Matara</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="attraction" class="block text-sm font-medium text-gray-700">Attraction</label>
+                    <select id="attraction" name="attraction" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="Galle Face Green">Galle Face Green</option>
+                        <option value="Gangaramaya Temple">Gangaramaya Temple</option>
+                        <option value="Negombo Beach">Negombo Beach</option>
+                        <option value="Kalutara Bodhiya">Kalutara Bodhiya</option>
+                        <option value="Temple of the Tooth Relic">Temple of the Tooth Relic</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="algorithm" class="block text-sm font-medium text-gray-700">Algorithm</label>
+                    <select id="algorithm" name="algorithm" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="bfs">BFS</option>
+                        <option value="dfs">DFS</option>
+                        <option value="astar">A*</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700">Find Route</button>
+            </form>
+            <div id="result" class="mt-6 hidden">
+                <h2 class="text-lg font-semibold">Result</h2>
+                <p id="path" class="text-gray-700"></p>
+                <p id="distance" class="text-gray-700"></p>
+            </div>
+            <div id="error" class="mt-6 text-red-600 hidden"></div>
+        </div>
+    </div> -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tourist Attraction Navigator</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🧭</text></svg>"
+        type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body class="py-8 px-4">
+    <div class="container mx-auto p-4 max-w-2xl">
+        <div class="text-center mb-8">
+            <h1
+                class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                Tourist Attraction Navigator</h1>
+            <p class="text-gray-600">Discover the best routes to Sri Lanka's beautiful attractions</p>
+        </div>
+
+        <div class="card p-8">
+            <form id="navigator-form" class="space-y-6">
+                <div class="space-y-2">
+                    <label for="start-city" class="block text-sm font-medium text-gray-700 flex items-center">
+                        <span class="option-icon"><i class="fas fa-map-marker-alt text-indigo-600"></i></span>
+                        Start City
+                    </label>
+                    <div class="relative">
+                        <select id="start-city" name="start-city"
+                            class="w-full p-3 pl-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                            <option value="" disabled selected>Select a city</option>
+                            <option value="colombo">Colombo</option>
+                            <option value="gampaha">Gampaha</option>
+                            <option value="kaluthara">Kaluthara</option>
+                            <option value="kegalle">Kegalle</option>
+                            <option value="kandy">Kandy</option>
+                            <option value="matale">Matale</option>
+                            <option value="nuwaraeliya">Nuwara Eliya</option>
+                            <option value="galle">Galle</option>
+                            <option value="matara">Matara</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-city text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="attraction" class="block text-sm font-medium text-gray-700 flex items-center">
+                        <span class="option-icon"><i class="fas fa-mountain text-indigo-600"></i></span>
+                        Attraction
+                    </label>
+                    <div class="relative">
+                        <select id="attraction" name="attraction"
+                            class="w-full p-3 pl-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                            <option value="" disabled selected>Select an attraction</option>
+                            <option value="Galle Face Green">Galle Face Green</option>
+                            <option value="Gangaramaya Temple">Gangaramaya Temple</option>
+                            <option value="Negombo Beach">Negombo Beach</option>
+                            <option value="Kalutara Bodhiya">Kalutara Bodhiya</option>
+                            <option value="Temple of the Tooth Relic">Temple of the Tooth Relic</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-umbrella-beach text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="algorithm" class="block text-sm font-medium text-gray-700 flex items-center">
+                        <span class="option-icon"><i class="fas fa-project-diagram text-indigo-600"></i></span>
+                        Algorithm
+                    </label>
+                    <div class="relative">
+                        <select id="algorithm" name="algorithm"
+                            class="w-full p-3 pl-10 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm">
+                            <option value="" disabled selected>Select an algorithm</option>
+                            <option value="bfs">Breadth-First Search (BFS)</option>
+                            <option value="dfs">Depth-First Search (DFS)</option>
+                            <option value="astar">A* Search Algorithm</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-code-branch text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-3 rounded-lg font-medium flex items-center justify-center space-x-2 hover:shadow-lg">
+                    <i class="fas fa-route"></i>
+                    <span>Find Route</span>
+                </button>
+            </form>
+
+            <div id="result" class="mt-8 p-5 rounded-lg result-card hidden">
+                <h2 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i> Route Found
+                </h2>
+                <div class="space-y-2">
+                    <p id="path" class="flex items-start">
+                        <span class="w-8"><i class="fas fa-route text-indigo-200"></i></span>
+                        <span class="flex-1">Path: <span class="font-medium">Colombo → Kandy → Temple of the Tooth
+                                Relic</span></span>
+                    </p>
+                    <p id="distance" class="flex items-start">
+                        <span class="w-8"><i class="fas fa-road text-indigo-200"></i></span>
+                        <span class="flex-1">Distance: <span class="font-medium">122 km</span></span>
+                    </p>
+                </div>
+            </div>
+
+            <div id="error" class="mt-6 p-4 bg-red-50 text-red-700 rounded-lg hidden flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span>Error message will appear here</span>
+            </div>
+        </div>
+
+        <div class="text-center mt-8 text-gray-500 text-sm">
+            <p>© 2025 Tourist Attraction Navigator | Group 21 OUSL BSc IT</p>
+        </div>
+    </div>
+    <script>
+        document.getElementById('navigator-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const startCity = document.getElementById('start-city').value;
+            const attraction = document.getElementById('attraction').value;
+            const algorithm = document.getElementById('algorithm').value;
+
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const pathP = document.getElementById('path');
+            const distanceP = document.getElementById('distance');
+
+            // Reset previous results
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+            errorDiv.textContent = '';
+
+            try {
+                const response = await fetch(`http://localhost:3000/find_route?start=${startCity}&attraction=${encodeURIComponent(attraction)}&algo=${algorithm}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch route');
+                }
+                const data = await response.json();
+                if (data.error) {
+                    errorDiv.textContent = `Error: ${data.error}`;
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    pathP.textContent = `Path: ${data.path.join(' -> ')}`;
+                    distanceP.textContent = `Total Distance: ${data.distance} km`;
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorDiv.textContent = `Error: ${err.message}`;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+
+</html>
